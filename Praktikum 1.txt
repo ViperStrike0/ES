@@ -1,0 +1,66 @@
+#include <pico/stdlib.h>
+#include <stdio.h>
+
+#define reset_reg (volatile uint32_t *)(RESETS_BASE +0x0) //kieu con tro 
+#define reset_done_reg (volatile uint32_t *)(RESETS_BASE +0x8)
+#define GPIO25_CTRL_REG (volatile uint32_t *)(SIO_BASE +0xcc)
+#define GPIO_OE_REG (volatile uint32_t *)(SIO_BASE +0x20)
+#define GPIO_OUT_REG (volatile uint32_t *)(SIO_BASE +0x10)
+#define LED_PIN 25
+#define IOBank0 (1<<5)
+#define GPIO_ON 1
+#define GPIO_OFF 0
+
+void enable_iobank0(){ //Reset von GPIO
+*reset_reg |= IOBank0; //setze GPIO
+        while ((*reset_done_reg & IOBank0)==0){
+            //warten bis der Reset fertig ist
+        }       
+} 
+
+void configure_gpio_for_sio()
+{
+    *GPIO25_CTRL_REG = (5 << 0);
+}
+
+void configure_gpio_as_output() {
+    *GPIO_OE_REG |= (1<<25);
+    
+}
+
+void led_on() {
+    *GPIO_OUT_REG |= (1<<LED_PIN);
+}
+
+void led_off() {
+    *GPIO_OUT_REG &= ~(1<<LED_PIN);
+}
+
+void blink_led() {
+   while(true)
+   {
+    led_on();
+    sleep_ms(2000);
+    led_off();
+    sleep_ms(2000);
+   }
+}
+
+int main() {
+    stdio_init_all(); //erstellen Input/Ouput auf Pico. 
+    enable_iobank0(); // reset und aktivieren IOBank0, um GPIO0-29 bereits zum Laufen sicherzustellen
+    configure_gpio_for_sio(); // Die Funktion SIO für GPIO25 konfigurieren, um sicherzustellen, dass der GPIO-Pin direkt gesteuert werden kann.
+    configure_gpio_as_output(); // setzen GPIO25 als Output
+    blink_led();
+
+    gpio_init(LED_PIN); // erstellen ein deutlicher GPIO und aktivieren automatisch IOBank0, wenn es noch nicht aktiviert
+    gpio_set_dir(LED_PIN, GPIO_OUT); // Setzen LED_PIN als GPIO_OUTPUT
+
+    while (true)
+    {
+        gpio_put(LED_PIN, GPIO_ON);
+        sleep_ms(2000);
+        gpio_put(LED_PIN, GPIO_OFF);
+        sleep_ms(2000);
+    }
+}
